@@ -2,13 +2,25 @@
 name = "hann-rs"
 version = "0.1.0"
 edition = "2021"
-authors = ["F0rty-Tw0 <artiomtofancv@gmailcom>"]
+authors = ["Artiom Tofan <artiomtofancv@gmailcom>"]
 description = "Blazingly fast Rust Hann Window"
 license = "MIT"
 repository = "https://github.com/F0rty-Tw0/hann-rs"
+readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "hann_rs"
+path = "src/lib.rs"
+crate-type = ["lib"]
+
 [dependencies]
+lazy_static = "1.4"
 
 [dev-dependencies]
 criterion = "0.4"
+approx = "0.5.1"
+
+
+[[bench]]
+name = "bench"
+harness = false
