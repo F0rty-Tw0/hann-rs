@@ -92,7 +92,7 @@ pub fn get_hann_window(window_length: usize) -> Result<Vec<f32>, HannWindowError
 /// # Returns
 /// `Result<Vec<Complex<f32>>, HannWindowError>` A Vec containing the Hann window values.
 /// or an error if the window length is less than or equal to 1 or if the window length is too large.
-pub fn calculate_hann_window(window_length: usize) -> Result<Vec<f32>, HannWindowError> {
+fn calculate_hann_window(window_length: usize) -> Result<Vec<f32>, HannWindowError> {
   // If the window length is less than or equal to 1, return an array with a single element of 0.0
   if window_length <= 1 {
     return Err(HannWindowError::WindowLengthTooSmall);
