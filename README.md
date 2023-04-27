@@ -8,6 +8,11 @@ A lookup table for pre-computed Hann windows is provided for common window lengt
 ## Usage
 1. Import the crate:
 
+```toml
+[dependencies]
+hann-rs = "0.1.0"
+```
+
 ```rust
 use hann_rs::get_hann_window;
 ```
