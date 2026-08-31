@@ -10,7 +10,7 @@ repository = "https://github.com/F0rty-Tw0/hann-rs"
 documentation = "https://docs.rs/hann-rs"
 readme = "README.md"
 keywords = ["hann-window", "signal-processing", "dsp", "audio", "fft"]
-categories = ["audio", "science", "mathematics"]
+categories = ["multimedia", "science", "mathematics"]
 exclude = ["/.github/**", "/.gitignore"]
 
 [dev-dependencies]
