@@ -1,101 +1,158 @@
-# hann-rs (Hann Window)
-This crate provides functions for computing the Hann window, a function used to taper the edges of a signal window to reduce spectral leakage. The Hann window is defined by the formula `w(n) = 0.5 - 0.5 * cos(2π * n / (N - 1))`, where n is the index of the current sample and `N` is the length of the window.
+# hann-rs
 
-![Plot](./plots/hann_window_scatter_plot.png)
+Generate Hann windows and their energy in `f32` or `f64`.
 
-A lookup table for pre-computed Hann windows is provided for common window lengths. This improves performance for repeated calculations with the same window length.
+[API documentation](https://docs.rs/hann-rs) · [Changelog](./CHANGELOG.md)
 
-## Usage
-1. Import the crate:
+Hann windows taper sampled signals to reduce spectral leakage:
+
+`w(n) = 0.5 - 0.5 cos(2πn / D)`
+
+`D` depends on the selected [`HannMode`](https://docs.rs/hann-rs/latest/hann_rs/enum.HannMode.html):
+
+| Mode | Denominator | Typical use |
+| --- | --- | --- |
+| `Symmetric` | `N - 1` | Filter design; both endpoints are zero |
+| `Periodic` | `N` | Spectral analysis; no duplicated endpoint |
+
+![Symmetric and periodic Hann windows](./plots/hann_window_modes.svg)
+
+This SVG is generated from the public `hann_f64` API. Regenerate it with:
+
+```console
+cargo run --example generate_plot
+```
+
+## Installation
 
 ```toml
 [dependencies]
-hann-rs = "0.1.0"
+hann-rs = "0.2"
 ```
 
-```rust
-use hann_rs::get_hann_window;
-```
-
-2. Get a Hann window of a specific length using the `get_hann_window` function:
-
-```rust
-let window_length = 1024;
-let hann_window = get_hann_window(window_length).expect("Failed to get the Hann window");
-```
-If the desired window length is in the lookup table, the precomputed values will be returned. If not, the Hann window values will be computed.
-
-### Precomputed Lookup Table
-The lookup table, `HANN_WINDOW_LOOKUP_TABLE`, contains precomputed Hann windows of lengths 256, 512, 1024, 2048, and 4096.
-
-You can add or modify the precomputed window lengths by changing the `HANN_WINDOW_PRECOMPUTED_LENGTHS` array in the `lazy_static` block:
-
-```rust
-const HANN_WINDOW_PRECOMPUTED_LENGTHS: [usize; 5] = [256, 512, 1024, 2048, 4096];
-```
-## Error Handling
-The functions `get_hann_window` return a `Result<Vec<f32>, HannWindowError>` type. Errors are returned in the following cases:
-
-
-- The window length is less than or equal to 1.
-- The window length is greater than the allowed maximum.
-- Memory allocation errors due to a large window length.
-
-To handle these errors, use the `Result` type as follows:
-
-```rust
-match get_hann_window(window_length) {
-    Ok(hann_window) => {
-        // Use the Hann window
-    },
-    Err(error) => {
-        println!("Error getting the Hann window: {:?}", error);
-        // or handle the error in your way
-    },
-}
-```
-
-### Benchmarks of **APPROXIMATE** results
-
-|Metric  | Size | Minimum Time  | Average Time  | Maximum Time  |
-:-------:|-----:|------------------:|------------------:|------------------:|
-`get_hann_window` | 2000 WL  | 7.0252 (µs) | 7.0657 (µs) | 7.1153 (µs) |
-`get_hann_window` | 4000 WL  | 13.496 (µs) | 13.596 (µs)| 13.708 (µs) |
-`get_hann_window` (Cached) | 4096 WL  | 363.84 (ns) | 369.98 (ns) | 377.30 (ns) | 
-
-
-# hann-rs (Hann Window Sum of Squares)
-This module provides functions for computing the sum of squares of a Hann window. It utilizes a lookup table for pre-computed sum of squares for common Hann window lengths, improving performance for repeated calculations with the same window length.
+hann-rs 0.2 requires Rust 1.98 or newer.
 
 ## Usage
-1. Import the module:
+
+Allocate a window:
 
 ```rust
-use hann_rs::get_hann_window_sum_squares;
+use hann_rs::{HannMode, hann_f32};
+
+let window = hann_f32(1024, HannMode::Periodic);
+assert_eq!(window.len(), 1024);
 ```
 
-2. Get the sum of squares of a Hann window using the `get_hann_window_sum_squares` function:
+Reuse generated windows with a caller-owned cache:
 
 ```rust
-let hann_window: Vec<f32> = vec![...]; // The Hann window values
-let hann_window_sum_squares = get_hann_window_sum_squares(&hann_window);
+use hann_rs::{HannCacheF32, HannMode};
+
+let mut cache = HannCacheF32::new();
+let window = cache.get(1024, HannMode::Periodic);
+assert_eq!(window.len(), 1024);
 ```
 
-If the length of the input `hann_window` is in the lookup table, the precomputed value will be returned. If not, the sum of squares will be computed using `map` and `sum`.
+Cache entries are retained by `(length, mode)` until `clear` or cache drop.
+`get` mutably borrows the cache and returns a borrowed slice, so finish using
+one slice before requesting another window. Keep one cache per workload and
+clear it when retained lengths or modes are no longer needed.
 
-### Precomputed Lookup Table
-The lookup table, `HANN_WINDOW_SUM_OF_SQUARES`, contains precomputed sum of squares for Hann windows of lengths 256, 512, 1024, 2048, and 4096.
-
-You can add or modify the precomputed window lengths by changing the `HANN_WINDOW_PRECOMPUTED_LENGTHS` array in the `lazy_static` block:
+Fill an existing buffer without allocating:
 
 ```rust
-const HANN_WINDOW_PRECOMPUTED_LENGTHS: [usize; 5] = [256, 512, 1024, 2048, 4096];
+use hann_rs::{HannMode, hann_in_place_f64};
+
+let mut window = [42.0; 5];
+hann_in_place_f64(&mut window, HannMode::Symmetric);
+assert_eq!(window[0], 0.0);
+assert_eq!(window[0], window[4]);
+assert_eq!(window[1], window[3]);
 ```
 
-### Benchmarks of **APPROXIMATE** results
+Compute the sum of squared coefficients without generating a window:
 
-|Metric  | Size | Minimum Time  | Average Time  | Maximum Time  |
-:-------:|-----:|------------------:|------------------:|------------------:|
-`get_hann_window_sum_squares` | 2000 WL |  601.14 (ns) | 603.21 (ns) | 605.71 (ns) |
-`get_hann_window_sum_squares` | 4000 WL |  1.1465 (µs)| 1.1520 (µs) | 1.1588 (µs) |
-`get_hann_window_sum_squares` (Cached) | 4096 WL  | 10.583 (ns) | 10.628 (ns) | 10.680 (ns) |
+```rust
+use hann_rs::{HannMode, hann_energy_f32};
+
+assert_eq!(hann_energy_f32(5, HannMode::Symmetric), 1.5);
+```
+
+## API
+
+| Operation | `f32` | `f64` |
+| --- | --- | --- |
+| Fill a buffer | `hann_in_place_f32` | `hann_in_place_f64` |
+| Allocate a `Vec` | `hann_f32` | `hann_f64` |
+| Compute energy | `hann_energy_f32` | `hann_energy_f64` |
+| Cache windows | `HannCacheF32` | `HannCacheF64` |
+
+All functions define the same boundary behavior:
+
+- Length 0 produces an empty window or no-op and has energy 0.
+- Length 1 produces `[1.0]` and has energy 1.
+
+The allocating and cache APIs impose no maximum length. Validate
+caller-controlled lengths before calling them; impossible or failed allocations
+may panic or abort.
+
+The in-place functions allocate no memory. The `Vec` functions allocate their
+result once and delegate generation to the corresponding in-place function.
+Energy functions use closed forms and allocate no memory.
+The benchmark suite measures generation and warmed caller-owned cache hits for
+both precisions. Run it on target hardware before making performance decisions.
+
+## Benchmarks
+
+### Current periodic generation
+
+`cargo bench` measures 4,096-sample periodic windows:
+
+| Benchmark | Lower | Estimate | Upper |
+| --- | ---: | ---: | ---: |
+| `hann_f32/in_place` | 12.080 µs | 12.091 µs | 12.105 µs |
+| `hann_f32/allocating` | 12.158 µs | 12.164 µs | 12.170 µs |
+| `hann_f32/cached_hit` | 9.8947 ns | 9.9105 ns | 9.9269 ns |
+| `hann_f64/in_place` | 22.162 µs | 22.193 µs | 22.225 µs |
+| `hann_f64/allocating` | 22.389 µs | 22.422 µs | 22.457 µs |
+| `hann_f64/cached_hit` | 10.200 ns | 10.218 ns | 10.240 ns |
+
+### Legacy comparison
+
+The comparison group matches the legacy benchmark's 4,096-sample `f32`
+**symmetric** window. Return ownership matters: legacy 0.1.0 cloned its global
+cache entry into an owned `Vec`; the new cache normally returns a borrowed
+slice.
+
+| Implementation | Cache behavior | Return | Lower | Estimate | Upper |
+| --- | --- | --- | ---: | ---: | ---: |
+| Legacy 0.1.0 `get_hann_window` | Global hit | Owned clone | 395.46 ns | 407.29 ns | 420.10 ns |
+| 0.2 `uncached_symmetric` | No cache | Owned generation | 15.693 µs | 16.258 µs | 16.848 µs |
+| 0.2 `cached_symmetric_borrowed` | Caller-owned hit | Borrowed slice | 29.738 ns | 30.300 ns | 30.919 ns |
+| 0.2 `cached_symmetric_owned_clone` | Caller-owned hit | Owned clone | 452.36 ns | 460.91 ns | 469.84 ns |
+
+On this run, the normal borrowed cache hit was 13.4× faster than legacy.
+For ownership-equivalent cloned output, 0.2 was 13.2% slower than legacy.
+Uncached generation was 39.9× slower than legacy's cache hit.
+
+Run the current comparison with:
+
+```console
+cargo bench --bench bench -- legacy_comparison
+```
+
+The legacy row came from unchanged commit `0c92550` using:
+
+```console
+cargo bench --bench bench -- get_hann_window
+```
+
+Environment: 13th Gen Intel Core i7-13700H, Linux x86_64, Rust 1.98.0,
+measured 2026-08-31. Current benchmarks use Criterion 0.8.2; legacy uses its
+original Criterion 0.4.0. Values are Criterion confidence intervals from one
+run each. Results include outliers and are not a performance guarantee; rerun
+on target hardware.
+
+## License
+
+MIT

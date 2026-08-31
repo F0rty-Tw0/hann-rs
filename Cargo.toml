@@ -1,28 +1,28 @@
 [package]
 name = "hann-rs"
-version = "0.1.0"
-edition = "2021"
-authors = ["Artiom Tofan <artiomtofancv@gmailcom>"]
-description = "Blazingly fast Rust Hann Window"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.98"
+authors = ["Artiom Tofan <artiomtofancv@gmail.com>"]
+description = "Hann window generation and energy calculations for digital signal processing"
 license = "MIT"
 repository = "https://github.com/F0rty-Tw0/hann-rs"
+documentation = "https://docs.rs/hann-rs"
 readme = "README.md"
 keywords = ["hann-window", "signal-processing", "dsp", "audio", "fft"]
 categories = ["audio", "science", "mathematics"]
-
-[lib]
-name = "hann_rs"
-path = "src/lib.rs"
-crate-type = ["lib"]
-
-[dependencies]
-lazy_static = "1.4"
-
+exclude = ["/.github/**", "/.gitignore"]
 
 [dev-dependencies]
-criterion = "0.4"
-approx = "0.5.1"
+criterion = "0.8"
+plotters = { version = "0.3.7", default-features = false, features = [
+    "svg_backend",
+    "line_series",
+    "point_series",
+]}
 
+[lints.rust]
+unsafe_code = "forbid"
 
 [[bench]]
 name = "bench"
